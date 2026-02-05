@@ -5,8 +5,6 @@ from random import *
 canvas = tkinter.Canvas(width=600,height=600)
 canvas.pack()
 
-BOUNCES = 1
-
 class Circle:
     def __init__(self, center: tuple[float, float], radius, ):
         self.center_x = center[0]
@@ -40,12 +38,13 @@ class Vector2:
     
     def rotate(self, angle:float):
         vec = self()
-        return Vector2((round(vec[0]*cos(angle)-vec[1]*sin(angle),8),round(vec[0]*sin(angle)+vec[1]*cos(angle)),8))
+        angle *= -1
+        return Vector2((round(vec[0]*cos(angle)-vec[1]*sin(angle),8),round(vec[0]*sin(angle)+vec[1]*cos(angle),8)))
     
     def rotateDeg(self, angle:float):
-        angle = angle/360*2*pi
+        angle = -angle/360*2*pi
         vec = self()
-        return Vector2((round(vec[0]*cos(angle)-vec[1]*sin(angle),8),round(vec[0]*sin(angle)+vec[1]*cos(angle)),8))
+        return Vector2((round(vec[0]*cos(angle)-vec[1]*sin(angle),8),round(vec[0]*sin(angle)+vec[1]*cos(angle),8)))
 
     def __str__(self):
         return f"Vector2({self.size*self.direction[0]}, {self.size*self.direction[1]})"
@@ -74,19 +73,44 @@ class Ray:
     def __call__(self):
         return (self.origin, self.direction)
     
-circle = Circle((300, 300), 200)
+circle = Circle((300, 300), 100)
 
 ray_origin = Vector2((500, 300))
 
-update_list = []
+update_list: list['Vector2'] = []
 
 circles = [circle]
 
 FOV = 90
-ROTATION = 180
-NUM_OF_RAYS = 20
+ROTATION = 145
+NUM_OF_RAYS = 50
+BOUNCES = 1
 
 for angle in range(int((ROTATION-FOV/2)*100), int((ROTATION+FOV/2+1)*100), int(FOV/NUM_OF_RAYS*100)):
     angle/=100
     ray = Ray(origin=ray_origin, direction=Vector2((1,0)))
     ray.rotDeg(angle)
+    update_list.append(ray)
+
+for circle in circles:
+    canvas.create_oval(circle())
+
+while True:
+    if update_list == []:
+        break
+    else:
+        workingRay = update_list.pop(0)
+        for circle in circles:
+            vectorToCircleCenter = circle.center_vector.sub(workingRay.origin)
+            rayProjection = workingRay.direction.dot(vectorToCircleCenter)
+            rayCenterDistance = sqrt(round(vectorToCircleCenter.size**2-rayProjection**2,8))
+            if vectorToCircleCenter.size > circle.radius:
+                if circle.radius - rayCenterDistance > 0:
+                    intersectionToCenterSize = sqrt(circle.radius**2-rayCenterDistance**2)
+                    hit_point = [origin_coord+dir_coord*(rayProjection-intersectionToCenterSize) for origin_coord, dir_coord in zip(workingRay.origin(), workingRay.direction())]
+                    canvas.create_rectangle(hit_point, hit_point, outline='red',fill='red')
+                    canvas.create_line(workingRay.origin(), hit_point, fill='blue')
+                else:
+                    canvas.create_line(workingRay.origin(), [origin+direction*500 for origin, direction in zip(workingRay.origin(), workingRay.direction())], fill="black")
+
+canvas.mainloop()
