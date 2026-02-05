@@ -77,12 +77,12 @@ circle = Circle((300, 300), 100)
 
 ray_origin = Vector2((500, 300))
 
-update_list: list['Vector2'] = []
+update_list: list['Ray'] = []
 
 circles = [circle]
 
 FOV = 90
-ROTATION = 145
+ROTATION = 175
 NUM_OF_RAYS = 50
 BOUNCES = 1
 
@@ -105,12 +105,26 @@ while True:
             rayProjection = workingRay.direction.dot(vectorToCircleCenter)
             rayCenterDistance = sqrt(round(vectorToCircleCenter.size**2-rayProjection**2,8))
             if vectorToCircleCenter.size > circle.radius:
-                if circle.radius - rayCenterDistance > 0:
+                if circle.radius - rayCenterDistance > 0 and rayProjection > 0:
                     intersectionToCenterSize = sqrt(circle.radius**2-rayCenterDistance**2)
                     hit_point = [origin_coord+dir_coord*(rayProjection-intersectionToCenterSize) for origin_coord, dir_coord in zip(workingRay.origin(), workingRay.direction())]
                     canvas.create_rectangle(hit_point, hit_point, outline='red',fill='red')
                     canvas.create_line(workingRay.origin(), hit_point, fill='blue')
+                    normalVector = Vector2(tuple(hit_point)).sub(workingRay.origin)
+                    normalVector.size = 1
+                    #if workingRay.bounceCounter+1 < BOUNCES:
+                    #    newRay = Ray(Vector2(tuple(hit_point)), Vector2((1,0)), workingRay.bounceCounter+1)
+                    #    update_list.append(newRay)
                 else:
                     canvas.create_line(workingRay.origin(), [origin+direction*500 for origin, direction in zip(workingRay.origin(), workingRay.direction())], fill="black")
+            else:
+                intersectionToCenterSize = sqrt(circle.radius**2-rayCenterDistance**2)
+                hit_point = [origin_coord+dir_coord*(rayProjection+intersectionToCenterSize) for origin_coord, dir_coord in zip(workingRay.origin(), workingRay.direction())]
+                canvas.create_rectangle(hit_point, hit_point, outline='red',fill='red')
+                canvas.create_line(workingRay.origin(), hit_point, fill='blue')
+                #if workingRay.bounceCounter+1 < BOUNCES:
+                #    newRay = Ray(Vector2(tuple(hit_point)), Vector2((1,0)), workingRay.bounceCounter+1)
+                #    update_list.append(newRay)
+
 
 canvas.mainloop()
