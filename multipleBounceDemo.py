@@ -1,16 +1,18 @@
 import tkinter
 from math import sqrt, sin, cos, acos, pi
 from random import *
+from uuid import uuid4
 
 canvas = tkinter.Canvas(width=600,height=600)
 canvas.pack()
 
 class Circle:
-    def __init__(self, center: tuple[float, float], radius, ):
+    def __init__(self, center: tuple[float, float], radius, color: tuple[float, float, float]=(1,1,1)):
         self.center_x = center[0]
         self.center_y = center[1]
         self.radius = radius
         self.center_vector = Vector2(center)
+        self.color = color
 
     def __call__(self):
         return ((self.center_x-self.radius,self.center_y-self.radius),(self.center_x+self.radius,self.center_y+self.radius))
@@ -53,11 +55,15 @@ class Vector2:
         return (self.size*self.direction[0], self.size*self.direction[1])
 
 class Ray:
-    def __init__(self, origin:'Vector2', direction:'Vector2', bounceCounter:int = 0):
+    def __init__(self, origin:'Vector2', direction:'Vector2', bounceCounter:int = 0, color:tuple[float, float, float] = (1,1,1), originalRay:'Ray'=None):
+        self.id = uuid4()
         self.origin = origin
         self.direction = direction
         self.direction.size = 1
         self.bounceCounter = bounceCounter
+        self.length = MAXIMUM_LENGTH
+        self.color = color
+        self.originalRay = originalRay
     
     def rot(self, angle:float):
         # Rotate by radians
@@ -68,23 +74,29 @@ class Ray:
         self.direction = self.direction.rotateDeg(angle)
 
     def __str__(self):
-        return f"Ray(({self.origin.size*self.origin.direction[0]}, {self.origin.size*self.origin.direction[1]}), ({self.direction.direction[0]}, {self.direction.direction[1]}))"
+        return f"Ray({self.id})"
     
     def __call__(self):
         return (self.origin, self.direction)
-    
-circle = Circle((300, 300), 100)
+
+def colorToHEX(color):
+    return f"#{int(color[0]*255):02x}{int(color[1]*255):02x}{int(color[2]*255):02x}"
+
+circle = Circle((300, 300), 250, color=(0.3,0.8,0.8))
 
 ray_origin = Vector2((500, 300))
 
 update_list: list['Ray'] = []
 
+# Circle((300,0), 175, color=(0.9,0.5,0.1))
+
 circles = [circle]
 
-FOV = 90
-ROTATION = 175
-NUM_OF_RAYS = 50
+FOV = 120
+ROTATION = 180
+NUM_OF_RAYS = 200
 BOUNCES = 1
+MAXIMUM_LENGTH = 100000000
 
 for angle in range(int((ROTATION-FOV/2)*100), int((ROTATION+FOV/2+1)*100), int(FOV/NUM_OF_RAYS*100)):
     angle/=100
@@ -93,38 +105,76 @@ for angle in range(int((ROTATION-FOV/2)*100), int((ROTATION+FOV/2+1)*100), int(F
     update_list.append(ray)
 
 for circle in circles:
-    canvas.create_oval(circle())
+    canvas.create_oval(circle(),outline=colorToHEX(circle.color))
 
 while True:
     if update_list == []:
         break
     else:
         workingRay = update_list.pop(0)
+        color = workingRay.color
         for circle in circles:
             vectorToCircleCenter = circle.center_vector.sub(workingRay.origin)
             rayProjection = workingRay.direction.dot(vectorToCircleCenter)
             rayCenterDistance = sqrt(round(vectorToCircleCenter.size**2-rayProjection**2,8))
-            if vectorToCircleCenter.size > circle.radius:
+            if vectorToCircleCenter.size >= circle.radius:
                 if circle.radius - rayCenterDistance > 0 and rayProjection > 0:
                     intersectionToCenterSize = sqrt(circle.radius**2-rayCenterDistance**2)
+                    relative_hit = Vector2(tuple([dir_coord*(rayProjection-intersectionToCenterSize) for dir_coord in workingRay.direction()]))
                     hit_point = [origin_coord+dir_coord*(rayProjection-intersectionToCenterSize) for origin_coord, dir_coord in zip(workingRay.origin(), workingRay.direction())]
-                    canvas.create_rectangle(hit_point, hit_point, outline='red',fill='red')
-                    canvas.create_line(workingRay.origin(), hit_point, fill='blue')
-                    normalVector = Vector2(tuple(hit_point)).sub(workingRay.origin)
-                    normalVector.size = 1
-                    #if workingRay.bounceCounter+1 < BOUNCES:
-                    #    newRay = Ray(Vector2(tuple(hit_point)), Vector2((1,0)), workingRay.bounceCounter+1)
-                    #    update_list.append(newRay)
-                else:
-                    canvas.create_line(workingRay.origin(), [origin+direction*500 for origin, direction in zip(workingRay.origin(), workingRay.direction())], fill="black")
-            else:
+                    hit_point_vector = Vector2(tuple(hit_point))
+                    if relative_hit.size < workingRay.length:
+                        if not workingRay.length >= MAXIMUM_LENGTH:
+                            update_list.pop()
+                        workingRay.length = relative_hit.size
+                        workingRay.color = tuple([ray_component*circle_component for ray_component, circle_component in zip(color, circle.color)])
+                        canvas.delete(workingRay.__str__())
+                        # canvas.create_rectangle(hit_point, hit_point, outline='red',fill='red', tags=workingRay.__str__())
+                        canvas.create_line(workingRay.origin(), hit_point, fill=colorToHEX(workingRay.color), tags=workingRay.__str__())
+                        normalVector = hit_point_vector.sub(circle.center_vector)
+                        normalVector.size = -1
+                        angle = acos(normalVector.dot(workingRay.direction))*(-1 if workingRay.direction.dot(normalVector.rotateDeg(90)) > 0 else 1)
+                        normalVector.size = 1
+                        newRayDirection = normalVector.rotate(angle)
+                        if workingRay.bounceCounter+1 <= BOUNCES:
+                            if workingRay.originalRay is not None:
+                                originalRay = workingRay.originalRay
+                            else:
+                                originalRay = workingRay
+                            newRay = Ray(Vector2(tuple([hit_coord + bounce_dir_component*2 for hit_coord, bounce_dir_component in zip(hit_point, normalVector())])), newRayDirection, workingRay.bounceCounter+1, workingRay.color, originalRay)
+                            update_list.append(newRay)
+                elif workingRay.length >= MAXIMUM_LENGTH:
+                    canvas.delete(workingRay.__str__())
+                    #canvas.create_line(workingRay.origin(), [origin+direction*500 for origin, direction in zip(workingRay.origin(), workingRay.direction())], fill="black", tags=workingRay.__str__())
+            else: # TODO: Fix issue with bouncing inside a clipping circle
+                # TODO: Fix issue where some rays disappear
                 intersectionToCenterSize = sqrt(circle.radius**2-rayCenterDistance**2)
+                relative_hit = Vector2(tuple([dir_coord*(rayProjection-intersectionToCenterSize) for dir_coord in workingRay.direction()]))
                 hit_point = [origin_coord+dir_coord*(rayProjection+intersectionToCenterSize) for origin_coord, dir_coord in zip(workingRay.origin(), workingRay.direction())]
-                canvas.create_rectangle(hit_point, hit_point, outline='red',fill='red')
-                canvas.create_line(workingRay.origin(), hit_point, fill='blue')
-                #if workingRay.bounceCounter+1 < BOUNCES:
-                #    newRay = Ray(Vector2(tuple(hit_point)), Vector2((1,0)), workingRay.bounceCounter+1)
-                #    update_list.append(newRay)
-
+                hit_point_vector = Vector2(tuple(hit_point))
+                if relative_hit.size < workingRay.length:
+                    if not workingRay.length >= MAXIMUM_LENGTH:
+                        update_list.pop()
+                    workingRay.length = relative_hit.size
+                    workingRay.color = tuple([ray_component*circle_component for ray_component, circle_component in zip(color, circle.color)])
+                    canvas.delete(workingRay.__str__())
+                    # canvas.create_rectangle(hit_point, hit_point, outline='red',fill='red', tags=workingRay.__str__())
+                    canvas.create_line(workingRay.origin(), hit_point, fill=colorToHEX(workingRay.color), tags = workingRay.__str__())
+                    normalVector = hit_point_vector.sub(circle.center_vector)
+                    normalVector.size = 1
+                    # canvas.create_line(hit_point, [coord+component*100 for coord, component in zip(hit_point, normalVector())])
+                    angle = acos(normalVector.dot(workingRay.direction))*(-1 if workingRay.direction.dot(normalVector.rotateDeg(90)) > 0 else 1)
+                    normalVector.size = -1
+                    newRayDirection = normalVector.rotate(angle)
+                    if workingRay.bounceCounter+1 < BOUNCES:
+                        if workingRay.originalRay is not None:
+                            originalRay = workingRay.originalRay
+                        else:
+                            originalRay = workingRay
+                        newRay = Ray(Vector2(tuple([hit_coord + bounce_dir_component*2 for hit_coord, bounce_dir_component in zip(hit_point, normalVector())])), newRayDirection, workingRay.bounceCounter+1, workingRay.color, originalRay)
+                        update_list.append(newRay)
+                if workingRay.bounceCounter+1 <= BOUNCES:
+                    newRay = Ray(Vector2(tuple(hit_point)), Vector2((1,0)), workingRay.bounceCounter+1)
+                    update_list.append(newRay)
 
 canvas.mainloop()
