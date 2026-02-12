@@ -27,7 +27,7 @@ while True:
 print("COPY BELOW THIS LINE:")
 text = types[type][2].replace("/*/", text)
 
-prefix = types[type][1][0] + types[type][1][1:-1]*(ceil(len(text)/len(types[type][1][1:-1]))-2) + types[type][1][-1]
-suffix = types[type][3][0] + types[type][3][1:-1]*(ceil(len(text)/len(types[type][3][1:-1]))-2) + types[type][3][-1]
+prefix = types[type][1][0] + types[type][1][1:-1]*(ceil((len(text)-2)/len(types[type][1][1:-1]))) + types[type][1][-1]
+suffix = types[type][3][0] + types[type][3][1:-1]*(ceil((len(text)-2)/len(types[type][3][1:-1]))) + types[type][3][-1]
 
 print(f"{prefix}\n{text}\n{suffix}\n")
