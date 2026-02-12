@@ -116,7 +116,7 @@ class Ray:
 #==============================#
 
 FOV = 120
-ROTATION = 180
+ROTATION = 0
 # NUM_OF_RAYS = 2000
 BOUNCES = 100
 MAXIMUM_LENGTH = 100000000
@@ -126,19 +126,19 @@ RAYS_PER_PX = 200
 angle_per_resolution_per_ray = FOV/(600/RESOLUTION)/RAYS_PER_PX
 
 
-ray_origin = Vector2((500, 300))
+ray_origin = Vector2((300, 300))
+
+#circles = [
+#    Circle((randrange(0,400), randrange(0,600)), randrange(50,100), color=(clamp(randrange(100,1500),0,1000)/1000,clamp(randrange(100,1500),0,1000)/1000,clamp(randrange(100,1500),0,1000)/1000), scattering= clamp(randrange(-1000,10000), 0, 0)/10000, light_source=choice((False, False, False, False, True)))
+#    for _ in range(10)
+#]
 
 circles = [
-    Circle((randrange(0,400), randrange(0,600)), randrange(50,100), color=(clamp(randrange(100,1500),0,1000)/1000,clamp(randrange(100,1500),0,1000)/1000,clamp(randrange(100,1500),0,1000)/1000), scattering= clamp(randrange(-1000,10000), 0, 0)/10000, light_source=choice((False, False, False, False, True)))
-    for _ in range(10)
-]
-
-"""circles = [
     Circle((0,300), 200, color = (1,1,1), light_source=True),
     Circle((750, 300), 200, color = (0.2,1,0.2)),
     Circle((600,0), 200, color = (1,0.2,0.2)),
     Circle((600, 600), 200, color = (0.2,0.2,1))
-]"""
+]
 
 update_list: list['Ray'] = []
 original_ray_list: list['Ray'] = []
@@ -275,7 +275,7 @@ for i, ray in enumerate(ray_list):
     if i%RAYS_PER_PX == RAYS_PER_PX-1:
         color = tuple([clamp(component/RAYS_PER_PX*1,0,1) for component in color])
         # print(color)
-        canvas.create_rectangle(0, (i/RAYS_PER_PX-1)*RESOLUTION, 600, ((i/RAYS_PER_PX)*RESOLUTION), fill = colorToHEX(color) if ray.hit_light else "#000000", outline="")
+        canvas.create_rectangle(0, (i/RAYS_PER_PX-1)*RESOLUTION, 600, ((i/RAYS_PER_PX)*RESOLUTION), fill = colorToHEX(color), outline="")
         color = (0,0,0)
     else:
         color = tuple([(component+ray_color if ray.hit_light else component) for component, ray_color in zip(color, ray.color)])
