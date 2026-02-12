@@ -47,7 +47,7 @@ class Vector2:
         return Vector2((round(self.size*self.direction[0]+vector.size*vector.direction[0],8),round(self.size*self.direction[1]+vector.size*vector.direction[1],8)))
     
     def sub(self, vector:'Vector2'):
-        return Vector2((round(self.size*self.direction[0]-vector.size*vector.direction[0],8),round(self.size*self.direction[1]-vector.size*vector.direction[1]),8))
+        return Vector2((round(self.size*self.direction[0]-vector.size*vector.direction[0],8),round(self.size*self.direction[1]-vector.size*vector.direction[1],8)))
     
     def mul(self, scalar:float):
         vec = self()
@@ -116,32 +116,29 @@ class Ray:
 #==============================#
 
 FOV = 120
-ROTATION = 0
+ROTATION = 180
 # NUM_OF_RAYS = 2000
 BOUNCES = 100
 MAXIMUM_LENGTH = 100000000
-RESOLUTION = 2
-RAYS_PER_PX = 100
+RESOLUTION = 1
+RAYS_PER_PX = 200
 
 angle_per_resolution_per_ray = FOV/(600/RESOLUTION)/RAYS_PER_PX
 
 
-canvas = tkinter.Canvas(width=600,height=600)
-canvas.pack()
-
-ray_origin = Vector2((300, 300))
-
-"""circles = [
-    Circle((randrange(0,400), randrange(0,600)), randrange(50,100), color=(clamp(randrange(100,1500),0,1000)/1000,clamp(randrange(100,1500),0,1000)/1000,clamp(randrange(100,1500),0,1000)/1000), scattering= clamp(randrange(-1000,10000), 0, 0)/10000, light_source=choice((False, False, False, False, True)))
-    for _ in range(10)
-]"""
+ray_origin = Vector2((500, 300))
 
 circles = [
+    Circle((randrange(0,400), randrange(0,600)), randrange(50,100), color=(clamp(randrange(100,1500),0,1000)/1000,clamp(randrange(100,1500),0,1000)/1000,clamp(randrange(100,1500),0,1000)/1000), scattering= clamp(randrange(-1000,10000), 0, 0)/10000, light_source=choice((False, False, False, False, True)))
+    for _ in range(10)
+]
+
+"""circles = [
     Circle((0,300), 200, color = (1,1,1), light_source=True),
     Circle((750, 300), 200, color = (0.2,1,0.2)),
     Circle((600,0), 200, color = (1,0.2,0.2)),
     Circle((600, 600), 200, color = (0.2,0.2,1))
-]
+]"""
 
 update_list: list['Ray'] = []
 original_ray_list: list['Ray'] = []
@@ -160,9 +157,6 @@ ray_list = update_list.copy()
 #for ray in ray_list:
 #    if ray.hit_light and ray.end is not None:
 #        ray.drawRay(canvas)
-
-canvas2 = tkinter.Canvas(width=600, height=600)
-canvas2.pack()
 
 for y in range(0,600,RESOLUTION):
     for ray_id in range(RAYS_PER_PX):
@@ -264,6 +258,13 @@ while True:
                 except Exception:
                     continue
 
+root = tkinter.Tk()
+
+canvas = tkinter.Canvas(width=600,height=600)
+canvas.grid(column=0,row=0)
+canvas2 = tkinter.Canvas(width=600, height=600)
+canvas2.grid(column=1,row=0)
+
 for circle in circles:
     canvas2.create_oval(circle(), outline = colorToHEX(circle.color), fill = colorToHEX(circle.color) if circle.light_source else "")
 
@@ -279,5 +280,4 @@ for i, ray in enumerate(ray_list):
     else:
         color = tuple([(component+ray_color if ray.hit_light else component) for component, ray_color in zip(color, ray.color)])
 
-canvas2.mainloop()
-canvas.mainloop()
+root.mainloop()
