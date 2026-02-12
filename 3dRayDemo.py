@@ -1,5 +1,5 @@
 import tkinter
-from math import sqrt, sin, cos, acos, pi, ceil
+from math import sqrt, sin, cos, acos, pi, ceil, floor
 from random import *
 from uuid import uuid4
 
@@ -13,6 +13,12 @@ def clamp(variable, minimum, maximum):
 
 def colorToHEX(color):
     return f"#{int(color[0]*255):02x}{int(color[1]*255):02x}{int(color[2]*255):02x}"
+
+def closeFactors(number:int):
+    factor = floor(sqrt(number))
+    while number//factor != round(number/factor,5):
+        number -= 1
+    return (factor, number//factor)
 
 
 #=======================#
@@ -79,8 +85,14 @@ class Vector:
             self.direction = (0,0,0)
     
     def dot(self, vector:'Vector'):
-        return round(self.size*vector.size*(self.direction[0]*vector.direction[0]+self.direction[1]*vector.direction[1]+self.direction[1]*vector.direction[1]),5)
+        return round(self.size*vector.size*(self.direction[0]*vector.direction[0]+self.direction[1]*vector.direction[1]+self.direction[2]*vector.direction[2]),5)
     
+    def dot2(self, vector:'Vector', idx_offset:int):
+        return round(self.size*vector.size*(self.direction[(0+idx_offset)%3]*vector.direction[(0+idx_offset)%3]+self.direction[(1+idx_offset)%3]*vector.direction[(1+idx_offset)%3]),5)
+
+    def unitDot2(self, vector:'Vector', idx_offset:int):
+        return round((self.direction[(0+idx_offset)%3]*vector.direction[(0+idx_offset)%3]+self.direction[(1+idx_offset)%3]*vector.direction[(1+idx_offset)%3])/(sqrt(self.direction[(0+idx_offset)%3]**2+self.direction[(1+idx_offset)%3]**2) if self.direction[(0+idx_offset)%3] != 0 and self.direction[(1+idx_offset)%3] != 0 else 1)/(sqrt(vector.direction[(0+idx_offset)%3]**2+vector.direction[(1+idx_offset)%3]**2) if vector.direction[(0+idx_offset)%3] != 0 and vector.direction[(1+idx_offset)%3] != 0 else 1),5)
+
     def add(self, vector:'Vector'):
         return Vector((round(self.size*self.direction[0]+vector.size*vector.direction[0],5),round(self.size*self.direction[1]+vector.size*vector.direction[1],5),round(self.size*self.direction[2]+vector.size*vector.direction[2],5)))
     
@@ -163,58 +175,44 @@ class Ray:
 
 FOV = 120
 ROTATION = 0
-# NUM_OF_RAYS = 2000
 BOUNCES = 40
 MAXIMUM_LENGTH = 100000000
 RESOLUTION = 5
-RAYS_PER_PX = 1
+RAYS_PER_PX = 20
 
-angle_per_resolution_per_ray = FOV/(600/RESOLUTION)/sqrt(RAYS_PER_PX)
+angle_per_pixel = FOV/(600/RESOLUTION)
+factors = closeFactors(RAYS_PER_PX)
+angle_per_ray_x = angle_per_pixel/factors[0]
+angle_per_ray_y = angle_per_pixel/factors[1]
 
 
-ray_origin = Vector((300, 300, 0))
-
-"""circles = [
-    Circle((randrange(0,400), randrange(0,600)), randrange(50,100), color=(clamp(randrange(100,1500),0,1000)/1000,clamp(randrange(100,1500),0,1000)/1000,clamp(randrange(100,1500),0,1000)/1000), scattering= clamp(randrange(-1000,10000), 0, 0)/10000, light_source=choice((False, False, False, False, True)))
-    for _ in range(10)
-]"""
+ray_origin = Vector((400, 300, 0))
 
 circles = [
-    Sphere((0,300,0), 200, color = (1,1,1), light_source=True),
+    # forward/back, side/side, up/down
+    Sphere((0,300,0), 350, color = (1,1,1), light_source=True),
     # Sphere((0,300,0), 100, color = (1,1,1), light_source=True),
-    Sphere((750, 300,0), 100, color = (1,1,1)),
-    Sphere((700,0,0), 100, color = (1,0.2,0.2)),
-    Sphere((600, 600,0), 100, color = (0.2,0.2,1))
+    Sphere((750, 300,0), 100, color = (1,1,1), scattering=0.1),
+    Sphere((600,100,0), 150, color = (1,0.2,0.2), scattering=0.1),
+    Sphere((600,500,0), 150, color = (0.2,0.2,1), scattering=0.1)
 ]
 
 update_list: list['Ray'] = []
-original_ray_list: list['Ray'] = []
-
-#for angle in range(int((ROTATION-FOV/2)*100), int((ROTATION+FOV/2+1)*100), int(FOV/NUM_OF_RAYS*100)):
-#    angle/=100
-#    ray = Ray(origin=ray_origin, direction=Vector2((1,0)))
-#    ray.rotDeg(angle)
-#   update_list.append(ray)
-
-ray_list = update_list.copy()
-
-#for circle in circles:
-#    canvas.create_oval(circle(),outline=colorToHEX(circle.color))
-
-#for ray in ray_list:
-#    if ray.hit_light and ray.end is not None:
-#        ray.drawRay(canvas)
+pixel_list: list[list['Ray']] = []
 
 for x in range(0,600,RESOLUTION):
     for y in range(0,600,RESOLUTION):
-        for x_ray in range(int(sqrt(RAYS_PER_PX))):
-            for y_ray in range(ceil(sqrt(RAYS_PER_PX))):
-                angle_z = (y_ray+y/RESOLUTION*RAYS_PER_PX+1)*angle_per_resolution_per_ray-FOV/2
-                angle_y = (x_ray+x/RESOLUTION*RAYS_PER_PX+1)*angle_per_resolution_per_ray-FOV/2
+        temp_ray_list = []
+        for x_ray in range(factors[0]):
+            for y_ray in range(factors[1]):
+                # print(x_ray,y_ray)
+                angle_z = (y/RESOLUTION-1)*angle_per_pixel+angle_per_ray_y*y_ray-FOV/2
+                angle_y = (x/RESOLUTION-1)*angle_per_pixel+angle_per_ray_x*x_ray-FOV/2
                 ray = Ray(origin=ray_origin, direction=Vector((1, 0, 0)))
                 ray.rotDeg(angle_z, angle_y+ROTATION)
                 update_list.append(ray)
-                ray_list.append(ray)
+                temp_ray_list.append(ray)
+        pixel_list.append(temp_ray_list)
 
 while True:
     if update_list == []:
@@ -226,13 +224,11 @@ while True:
             vectorToCircleCenter = circle.center_vector.sub(workingRay.origin)
             if vectorToCircleCenter.size >= circle.radius:
                 rayProjection = workingRay.direction.dot(vectorToCircleCenter)
-                # print(rayProjection)
                 try:
                     rayCenterDistance = sqrt(round(vectorToCircleCenter.size**2-rayProjection**2,5))
                 except Exception:
                     rayCenterDistance = 0
                 if circle.radius - rayCenterDistance > 0 and rayProjection > 0:
-                    # print("hit")
                     intersectionToCenterSize = sqrt(circle.radius**2-rayCenterDistance**2)
                     relative_hit = Vector(tuple([dir_coord*(rayProjection-intersectionToCenterSize) for dir_coord in workingRay.direction()]))
                     hit_point = [origin_coord+dir_coord*(rayProjection-intersectionToCenterSize) for origin_coord, dir_coord in zip(workingRay.origin(), workingRay.direction())]
@@ -247,18 +243,17 @@ while True:
                         workingRay.bounceColor = tuple([circle_component for circle_component in circle.color])
                         workingRay.end = hit_point_vector
                         workingRay.color = (1,1,1)
-                        # canvas.delete(workingRay.__str__())
-                        # canvas.create_rectangle(hit_point, hit_point, outline='red',fill='red', tags=workingRay.__str__())
-                        # canvas.create_line(workingRay.origin(), hit_point, fill=colorToHEX(workingRay.color), tags=workingRay.__str__())
                         normalVector = hit_point_vector.sub(circle.center_vector)
                         normalVector.size = -1
                         scatter_coefficient = randrange(0,10000)/10000
                         if scatter_coefficient < circle.scatteringCoefficient:
-                            angle = randrange(int(-pi/2*10000),int(pi/2*10000))/10000
+                            angle_z = randrange(int(-pi/2*10000),int(pi/2*10000))/10000
+                            angle_y = randrange(int(-pi/2*10000),int(pi/2*10000))/10000
                         else:
-                            angle = acos(clamp(normalVector.dot(workingRay.direction),0,1))*(-1 if workingRay.direction.dot(normalVector.rotateDeg(0,90)) > 0 else 1)
+                            angle_z = acos(clamp(normalVector.unitDot2(workingRay.direction,0),-1,1))*(-1 if workingRay.direction.dot2(normalVector.rotateDeg(90,0),0) < 0 else 1)
+                            angle_y = acos(clamp(normalVector.unitDot2(workingRay.direction,2),-1,1))*(-1 if workingRay.direction.dot2(normalVector.rotateDeg(0,90),2) < 0 else 1)
                         normalVector.size = 1
-                        newRayDirection = normalVector.rotate(angle,0)
+                        newRayDirection = normalVector.rotate(angle_z,angle_y)
                         if circle.light_source:
                             hit_light_source = True
                             workingRay.setLightHit(True)
@@ -271,9 +266,6 @@ while True:
                             newRay = Ray(Vector(tuple([hit_coord + bounce_dir_component for hit_coord, bounce_dir_component in zip(hit_point, normalVector())])), newRayDirection, workingRay.bounceCounter+1, originalRay=workingRay)
                             update_list.append(newRay)
                             workingRay.childRay = newRay
-                # elif workingRay.length >= MAXIMUM_LENGTH:
-                    # canvas.delete(workingRay.__str__())
-                    # canvas.create_line(workingRay.origin(), [origin+direction*500 for origin, direction in zip(workingRay.origin(), workingRay.direction())], fill="black", tags=workingRay.__str__())
             else: # TODO: Fix issue with bouncing inside a clipping circle
                 # TODO: Fix issue where some rays disappear
                 try:
@@ -313,25 +305,18 @@ root = tkinter.Tk()
 
 canvas = tkinter.Canvas(width=600,height=600)
 canvas.grid(column=0,row=0)
-#canvas2 = tkinter.Canvas(width=600, height=600)
-#canvas2.grid(column=1,row=0)
 
-#for circle in circles:
-    #canvas2.create_oval(circle(), outline = colorToHEX(circle.color), fill = colorToHEX(circle.color) if circle.light_source else "")
-
-color = (0,0,0)
-for i, ray in enumerate(ray_list):
+for i, ray_list in enumerate(pixel_list):
+    # print(len(pixel_list))
     #if ray.hit_light:
         #ray.drawRay(canvas2)
-    x = i//RAYS_PER_PX%(600//RESOLUTION)
-    y = i//RAYS_PER_PX//(600//RESOLUTION)
-    if i%RAYS_PER_PX == RAYS_PER_PX-1:
+    x = i%(600//RESOLUTION)
+    y = i//(600//RESOLUTION)
+    color = (0,0,0)
+    for ray in ray_list:
         color = tuple([(component+ray_color if ray.hit_light else component) for component, ray_color in zip(color, ray.color)])
-        color = tuple([clamp(component/RAYS_PER_PX*1,0,1) for component in color])
-        # print(color)
-        canvas.create_rectangle((x)*RESOLUTION, (y)*RESOLUTION, (x+1)*RESOLUTION, (y+1)*RESOLUTION, fill = colorToHEX(color) if ray.hit_light else "#000000", outline="")
-        color = (0,0,0)
-    else:
-        color = tuple([(component+ray_color if ray.hit_light else component) for component, ray_color in zip(color, ray.color)])
+    color = tuple([clamp(component/RAYS_PER_PX*1,0,1) for component in color])
+    canvas.create_rectangle((x)*RESOLUTION, (y)*RESOLUTION, (x+1)*RESOLUTION, (y+1)*RESOLUTION, fill = colorToHEX(color), outline="")
+
 
 root.mainloop()
