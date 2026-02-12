@@ -111,8 +111,8 @@ class Vector:
         return Vector((round(vec[0]*cos(angle_y)+vec[2]*sin(angle_y),5),vec[1],round(vec[2]*cos(angle_y)-vec[0]*sin(angle_y),5)))
     
     def rotateDeg(self, angle_z:float, angle_y:float):
-        angle_z = -angle_z/360*2*pi
-        angle_y = -angle_y/360*2*pi
+        angle_z = angle_z/360*2*pi
+        angle_y = angle_y/360*2*pi
         vec = self()
         vec  = Vector((round(vec[0]*cos(angle_z)-vec[1]*sin(angle_z),5),round(vec[0]*sin(angle_z)+vec[1]*cos(angle_z),5),vec[2]))()
         return Vector((round(vec[0]*cos(angle_y)+vec[2]*sin(angle_y),5),vec[1],round(vec[2]*cos(angle_y)-vec[0]*sin(angle_y),5)))
@@ -250,7 +250,7 @@ while True:
                             angle_z = randrange(int(-pi/2*10000),int(pi/2*10000))/10000
                             angle_y = randrange(int(-pi/2*10000),int(pi/2*10000))/10000
                         else:
-                            angle_z = acos(clamp(normalVector.unitDot2(workingRay.direction,0),-1,1))*(-1 if workingRay.direction.dot2(normalVector.rotateDeg(90,0),0) < 0 else 1)
+                            angle_z = acos(clamp(normalVector.unitDot2(workingRay.direction,0),-1,1))*(-1 if workingRay.direction.dot2(normalVector.rotateDeg(90,0),0) > 0 else 1)
                             angle_y = acos(clamp(normalVector.unitDot2(workingRay.direction,2),-1,1))*(-1 if workingRay.direction.dot2(normalVector.rotateDeg(0,90),2) < 0 else 1)
                         normalVector.size = 1
                         newRayDirection = normalVector.rotate(angle_z,angle_y)
@@ -318,5 +318,5 @@ for i, ray_list in enumerate(pixel_list):
     color = tuple([clamp(component/RAYS_PER_PX*1,0,1) for component in color])
     canvas.create_rectangle((x)*RESOLUTION, (y)*RESOLUTION, (x+1)*RESOLUTION, (y+1)*RESOLUTION, fill = colorToHEX(color), outline="")
 
-
+# TODO: Create a debug system, where click on a pixel -> ray fired -> print info (hitpoint, normal vector, etc...)
 root.mainloop()
