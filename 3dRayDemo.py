@@ -12,7 +12,7 @@ def clamp(variable, minimum, maximum):
     return min(max(variable, minimum), maximum)
 
 def colorToHEX(color):
-    return f"#{int(color[0]*255):02x}{int(color[1]*255):02x}{int(color[2]*255):02x}"
+    return f"#{clamp(int(color[0]*255),0,255):02x}{clamp(int(color[1]*255),0,255):02x}{clamp(int(color[2]*255),0,255):02x}"
 
 def closeFactors(number:int):
     factor = floor(sqrt(number))
@@ -173,12 +173,12 @@ class Ray:
 #   CONFIGURATION PARAMETERS   #
 #==============================#
 
-FOV = 120
+FOV = 170
 ROTATION = 0
 BOUNCES = 40
 MAXIMUM_LENGTH = 100000000
 RESOLUTION = 5
-RAYS_PER_PX = 20
+RAYS_PER_PX = 32
 
 angle_per_pixel = FOV/(600/RESOLUTION)
 factors = closeFactors(RAYS_PER_PX)
@@ -192,9 +192,9 @@ circles = [
     # forward/back, side/side, up/down
     Sphere((0,300,0), 350, color = (1,1,1), light_source=True),
     # Sphere((0,300,0), 100, color = (1,1,1), light_source=True),
-    Sphere((750, 300,0), 100, color = (1,1,1), scattering=0.1),
-    Sphere((600,100,0), 150, color = (1,0.2,0.2), scattering=0.1),
-    Sphere((600,500,0), 150, color = (0.2,0.2,1), scattering=0.1)
+    Sphere((600, 300,0), 25, color = (1,1,1), scattering=1),
+    Sphere((600,100,0), 150, color = (1,0.2,0.2), scattering=1),
+    Sphere((600,500,0), 150, color = (0.2,0.2,1), scattering=1)
 ]
 
 update_list: list['Ray'] = []
@@ -250,7 +250,7 @@ while True:
                             angle_z = randrange(int(-pi/2*10000),int(pi/2*10000))/10000
                             angle_y = randrange(int(-pi/2*10000),int(pi/2*10000))/10000
                         else:
-                            angle_z = acos(clamp(normalVector.unitDot2(workingRay.direction,0),-1,1))*(-1 if workingRay.direction.dot2(normalVector.rotateDeg(90,0),0) > 0 else 1)
+                            angle_z = -acos(clamp(normalVector.unitDot2(workingRay.direction,0),-1,1))#*(-1 if workingRay.direction.dot2(normalVector.rotateDeg(90,0),0) > 0 else 1)
                             angle_y = acos(clamp(normalVector.unitDot2(workingRay.direction,2),-1,1))*(-1 if workingRay.direction.dot2(normalVector.rotateDeg(0,90),2) < 0 else 1)
                         normalVector.size = 1
                         newRayDirection = normalVector.rotate(angle_z,angle_y)
